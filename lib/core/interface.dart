@@ -75,6 +75,12 @@ mixin CoreInterface {
 }
 
 abstract class CoreHandlerInterface with CoreInterface {
+  // Polled every second; logging them floods the log list and wastes CPU.
+  static const _silentMethods = {
+    ActionMethod.getTraffic,
+    ActionMethod.getTotalTraffic,
+  };
+
   Completer get completer;
 
   FutureOr<bool> destroy();
@@ -93,14 +99,17 @@ abstract class CoreHandlerInterface with CoreInterface {
       );
       return null;
     }
+    final silent = _silentMethods.contains(method);
     return await utils.handleWatch(
       onStart: () {
+        if (silent) return;
         commonPrint.log('Invoke ${method.name} ${DateTime.now()} $data');
       },
       function: () async {
         return invoke<T>(method: method, data: data, timeout: timeout);
       },
       onEnd: (data, elapsedMilliseconds) {
+        if (silent) return;
         commonPrint.log('Invoke ${method.name} ${elapsedMilliseconds}ms');
       },
     );

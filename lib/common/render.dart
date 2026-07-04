@@ -16,6 +16,8 @@ class Render {
     return _instance!;
   }
 
+  bool get isPaused => _isPaused;
+
   void active() {
     resume();
     pause();

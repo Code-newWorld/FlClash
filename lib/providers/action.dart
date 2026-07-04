@@ -145,6 +145,12 @@ class SetupAction extends _$SetupAction {
       await coreController.startListener();
     }
     _updateTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      // While the window is hidden and the tray title is off, nothing
+      // consumes these values; skip the per-second core IPC round-trips.
+      if (render?.isPaused == true &&
+          !ref.read(appSettingProvider).showTrayTitle) {
+        return;
+      }
       ref.read(commonActionProvider.notifier).updateRunTime();
       ref.read(commonActionProvider.notifier).updateTraffic();
     });
