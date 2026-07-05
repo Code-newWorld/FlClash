@@ -1,9 +1,9 @@
 name: build
 
+# Fork note: disabled tag trigger (requires upstream signing secrets and
+# builds all platforms). Use build-macos-only.yaml for releases instead.
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
 env:
   IS_STABLE: ${{ !contains(github.ref, '-') }}
 

@@ -5,6 +5,11 @@ on:
   push:
     branches:
       - macos-battery-fix
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -43,3 +48,29 @@ jobs:
           name: FlClash-macos-arm64-dmg
           path: ./dist
           overwrite: true
+
+      - name: Generate checksums
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          cd ./dist
+          shasum -a 256 * > SHA256SUMS
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ./dist/*
+          body: |
+            macOS (Apple Silicon) build with battery-drain fixes on top of upstream FlClash 0.8.93.
+
+            Fixes high background CPU usage (~40-50%) on newer macOS with TUN enabled:
+            - Tray title updates are deduplicated (no more per-second NSStatusItem redraws)
+            - Per-second core polling is paused while the window is hidden
+            - High-frequency IPC calls no longer flood the log list
+            - Connection push messages are not parsed while the window is hidden
+            - Native tray text rendering no longer triggers a redraw loop (tray_manager patch)
+
+            See MACOS_PERFORMANCE_FIX.md in the repository for full details.
+
+            **Install note:** this build is unsigned. After copying FlClash.app to /Applications, run:
+            `xattr -rd com.apple.quarantine /Applications/FlClash.app`
