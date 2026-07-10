@@ -216,8 +216,10 @@ class Tray {
     if (title == _lastTrayTitle) {
       return;
     }
-    _lastTrayTitle = title;
+    // Assign after a successful platform call so a failed setTitle can retry
+    // the same title on the next update.
     await trayManager.setTitle(title);
+    _lastTrayTitle = title;
   }
 
   Future<void> _copyEnv(int port) async {
