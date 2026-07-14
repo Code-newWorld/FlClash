@@ -116,20 +116,13 @@ TUN 模式下，Go 内核每建立一条连接就推送一条 `CoreEventType.req
 
 ---
 
-### 6. 原生托盘重绘自循环（Swift，fork 专用）
-
-**文件：** `plugins/tray_manager/packages/tray_manager/macos/Classes/TrayIcon.swift`
+### 6. 原生托盘重绘自循环（Swift）
 
 **问题：**  
-`tray_manager` 插件用 `NSTextField` 显示托盘网速文字。在较新 macOS、尤其开启「显示器具有独立空间」的多显示器配置下，`NSTextField` 的绘制会经过 AppKit appearance 机制，触发 `NSStatusItem` replicant 反复标记 dirty → 重绘 → 再 dirty 的自循环。即使 Dart 侧减少了 `setTitle` 调用，开启托盘网速且外接显示器时仍可能出现 CPU 峰值。
+`tray_manager` 插件用 `NSTextField` 显示托盘网速文字。在较新 macOS、尤其开启「显示器具有独立空间」的多显示器配置下，`NSTextField` 的绘制会经过 AppKit appearance 机制，触发 `NSStatusItem` replicant 反复标记 dirty → 重绘 → 再 dirty 的自循环。
 
-**修复：**
-
-- 新增自绘 `SpeedTextView`（继承 `NSView`，在 `draw(_:)` 中绘制 attributed string），替代 `NSTextField`
-- `setTitle()` 仅在文字可见性变化（空 ↔ 非空）时调用 `button.sizeToFit()`，避免每秒触发布局
-- `setImage()` 同理，仅在图标从隐藏变为显示时 `sizeToFit()`
-
-**说明：** 此改动位于 `tray_manager` 子模块。上游 FlClash 仍以 git submodule 引用原作者仓库，**官方 PR（`fix-macos-cpu-drain` 分支）仅包含上述 1–5 的 Dart 修复**。完整修复需在本 fork 中将 `tray_manager` 以内联目录形式保留该补丁，或单独向 `chen08209/tray_manager` 提 PR。
+**现状（上游 v0.8.94）：**  
+官方已在 `chen08209/tray_manager` 合入同等修复（自绘 `SpeedTextView` 替代 `NSTextField`，减少 `sizeToFit`），并通过 `pubspec.yaml` 的 git 依赖引入。本 fork 从 0.8.94 起不再内联 vendored `plugins/tray_manager`，改用与上游相同的依赖。
 
 ---
 
@@ -139,9 +132,15 @@ TUN 模式下，Go 内核每建立一条连接就推送一条 `CoreEventType.req
 
 Clash 配置中的「查找进程」(`find-process-mode`) 在 TUN 下会增加内核侧开销。这是**用户可配置项**，无需改代码：在 **设置 → 常规** 中关闭「查找进程」即可进一步降低 CPU。
 
-### 上游 `tray_manager` submodule
+---
 
-官方仓库的 `.gitmodules` 仍指向 `chen08209/tray_manager`。Dart 侧修复（1–5）可独立合入上游；原生补丁（6）需子模块仓库配合更新。
+## 与上游 v0.8.94 的关系
+
+| 修复项 | 上游 0.8.94 | 本 fork |
+|--------|-------------|---------|
+| 原生托盘重绘自循环 | 已修（tray_manager） | 跟随上游 |
+| ClashMeta 内核更新 | 已更新 | 已合入 |
+| Dart 侧 1–5（setTitle 去重 / 条件订阅 / 隐藏窗口暂停轮询 / 静默日志 / 跳过 request 解析） | 未修 | 保留 |
 
 ---
 
@@ -155,7 +154,6 @@ Clash 配置中的「查找进程」(`find-process-mode`) 在 TUN 下会增加�
 | `lib/common/render.dart` | Dart | 暴露 `isPaused` |
 | `lib/core/interface.dart` | Dart | 静默高频 IPC 日志 |
 | `lib/core/event.dart` | Dart | 隐藏窗口时跳过 request 解析 |
-| `plugins/tray_manager/.../TrayIcon.swift` | Swift | 自绘文本视图、减少 layout（fork 专用） |
 
 Dart 侧合计约 **38 行**改动，均为最小 diff，不改变窗口可见时的功能行为。
 
@@ -180,8 +178,8 @@ Dart 侧合计约 **38 行**改动，均为最小 diff，不改变窗口可见�
 
 ## 分支与 PR
 
-- **本 fork 完整修复：** 分支 `macos-battery-fix` / `main`（含 Dart + Swift + CI）
-- **上游 PR（仅 Dart）：** 分支 `fix-macos-cpu-drain` → `chen08209/FlClash`
+- **本 fork：** 分支 `macos-battery-fix` / `main`（上游 0.8.94 + Dart 侧 1–5 + macOS CI）
+- **上游 Dart PR：** [#2201](https://github.com/chen08209/FlClash/pull/2201)、[#2202](https://github.com/chen08209/FlClash/pull/2202)（仍 open）
 
 ---
 

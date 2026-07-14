@@ -230,6 +230,7 @@ class SetupAction extends _$SetupAction {
         final message = await coreController.updateConfig(
           updateParams.copyWith.tun(enable: realTunEnable),
         );
+        ref.read(checkIpNumProvider.notifier).add();
         if (message.isNotEmpty) throw message;
       });
     });
@@ -260,7 +261,6 @@ class SetupAction extends _$SetupAction {
           .read(proxiesActionProvider.notifier)
           .updateCurrentGroupName(GroupName.GLOBAL.name);
     }
-    ref.read(checkIpNumProvider.notifier).add();
   }
 
   void autoApplyProfile() {
@@ -599,9 +599,11 @@ class SystemAction extends _$SystemAction {
     }
   }
 
-  Future<void> handleBackOrExit() async {
-    if (ref.read(backBlockProvider)) return;
-    if (ref.read(appSettingProvider).minimizeOnExit) {
+  Future<void> handleClose([bool exit = true]) async {
+    if (!system.isDesktop) {
+      if (ref.read(backBlockProvider)) return;
+    }
+    if (ref.read(appSettingProvider).minimizeOnExit || !exit) {
       if (system.isDesktop) {
         await preferences.saveConfig(ref.read(configProvider));
       }
@@ -916,14 +918,14 @@ class ProfilesAction extends _$ProfilesAction {
 
   Future<void> addProfileFormFile() async {
     final platformFile = await globalState.safeRun(picker.pickerFile);
-    final bytes = platformFile?.bytes;
-    if (bytes == null) return;
+    if (platformFile == null) return;
+    final bytes = await platformFile.readBytes();
     globalState.navigatorKey.currentState?.popUntil((route) => route.isFirst);
     ref.read(currentPageLabelProvider.notifier).toProfiles();
     final profile = await globalState.loadingRun(
       tag: LoadingTag.profiles,
       () async {
-        return Profile.normal(label: platformFile?.name).saveFile(bytes);
+        return Profile.normal(label: platformFile.name).saveFile(bytes);
       },
       title: currentAppLocalizations.addProfile,
     );
@@ -977,5 +979,24 @@ class ProfilesAction extends _$ProfilesAction {
       await profileFile.safeDelete(recursive: true);
     }
     await coreController.deleteFile(providersDirPath);
+  }
+}
+
+@Riverpod(keepAlive: true)
+class GeoResourceAction extends _$GeoResourceAction {
+  @override
+  void build() {}
+
+  Future<void> updateGeoResource(GeoResource geoResource) async {
+    await coreController.updateGeoData(geoResource.name);
+  }
+
+  void updateGeoResourceUrl(GeoResource geoResource, String newUrl) {
+    if (!newUrl.isUrl) {
+      throw 'Invalid url';
+    }
+    ref.read(patchClashConfigProvider.notifier).update((state) {
+      return state.copyWith(geoXUrl: {...state.geoXUrl, geoResource: newUrl});
+    });
   }
 }

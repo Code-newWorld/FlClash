@@ -61,14 +61,17 @@ jobs:
         with:
           files: ./dist/*
           body: |
-            macOS (Apple Silicon) build with battery-drain fixes on top of upstream FlClash 0.8.93.
+            macOS (Apple Silicon) build on top of upstream FlClash 0.8.94, plus extra Dart idle-CPU fixes.
 
-            Fixes high background CPU usage (~40-50%) on newer macOS with TUN enabled:
-            - Tray title updates are deduplicated (no more per-second NSStatusItem redraws)
+            Includes upstream 0.8.94:
+            - Updated ClashMeta/mihomo core
+            - Official tray_manager native redraw-loop fix (SpeedTextView)
+
+            Extra fixes retained from this fork:
+            - Tray title updates are deduplicated (no more per-second setTitle)
             - Per-second core polling is paused while the window is hidden
             - High-frequency IPC calls no longer flood the log list
             - Connection push messages are not parsed while the window is hidden
-            - Native tray text rendering no longer triggers a redraw loop (tray_manager patch)
 
             See MACOS_PERFORMANCE_FIX.md in the repository for full details.
 
